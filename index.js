@@ -10,9 +10,21 @@ const {
     Routes,
     Collection,
     PermissionFlagsBits,
+    enableValidators,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle
 } = require("discord.js");
 const { token, clientId, guildId } = require("./config.json");
-const Warn = require('./models.Warn.js');
+const Warn = require("./models/Warn.js");
+const mongoose = require("mongoose");
+
+mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+}).then(() => console.log("✅ Railway MongoDB connexion successful"))
+  .catch((err) => console.error("❌ MongoDB error:", err));
+
 
 const client = new Client({
     intents: [
@@ -225,6 +237,28 @@ client.once(Events.ClientReady, (c) => {
                     .setDescription("Üzenet a moderátoroknak")
                     .setRequired(false)
             ),
+        new SlashCommandBuilder()
+            .setName("getwarn")
+            .setDescription("Megjeleníti a figyelmeztetéseket egy felhasználónak")
+            .addUserOption((option) =>
+                option
+                    .setName("user")
+                    .setDescription("Felhasználó akinek a figyelmeztetéseit meg akarod nézni")
+                    .setRequired(true)
+            ),
+        new SlashCommandBuilder()
+            .setName("delwarn")
+            .setDescription("Töröl egy adott figyelmeztetést egy felhasználóról")
+            .addUserOption(option =>
+                option.setName("user")
+                    .setDescription("A felhasználó, akitől törölni szeretnél egy figyelmeztetést")
+                    .setRequired(true)
+            )
+            .addIntegerOption(option =>
+                option.setName("index")
+                    .setDescription("A figyelmeztetés sorszáma (1-től kezdve)")
+                    .setRequired(true)
+            ),
 
         new SlashCommandBuilder()
             .setName("test")
@@ -236,7 +270,7 @@ client.once(Events.ClientReady, (c) => {
             .addUserOption((option) =>
                 option
                     .setName("user")
-                    .setDescription("Feszhasználó akinek akarsz írni")
+                    .setDescription("Felhasználó akinek akarsz írni")
                     .setRequired(true)
             )
             .addStringOption((option) =>
@@ -320,7 +354,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (!hasPermissionOwner) {
             return interaction.reply({
                 content: "Nincs jogosultságod a parancs használatához!",
-                ephemeral: true,
+                flags: 1 << 6,
             });
         }
 
@@ -334,12 +368,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 await userDM.send(text);
                 interaction.reply({
                     content: `Sikeres üzenetküldés!`,
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             } catch (error) {
                 interaction.reply({
                     content: `Sikertelen üzenetküldés, próbálja újra!`,
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             }
         } else if (commandName === "send") {
@@ -352,12 +386,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 await channel.send(text);
                 await interaction.reply({
                     content: "Sikeres üzenetküldés!",
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             } catch (error) {
                 await interaction.reply({
                     content: "Sikertelen üzenetküldés, próbálja újra!",
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             }
         }
@@ -366,12 +400,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (
         commandName === "ban" ||
         commandName === "unban" ||
-        commandName === "tempban"
+        commandName === "tempban" ||
+        commandName === "delwarn"
     ) {
         if (!hasPermissionAdmin) {
             return interaction.reply({
                 content: "Nincs jogosultságod a parancs használatához!",
-                ephemeral: true,
+                flags: 1 << 6,
             });
         }
 
@@ -383,12 +418,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 await interaction.guild.members.ban(user.id, { reason });
                 interaction.reply({
                     content: `${user.username} ki lett tiltva. Indoklás: ${reason}`,
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             } catch (error) {
                 interaction.reply({
                     content: "Hiba történt a felhasználó kitiltásakor.",
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             }
         } else if (commandName === "unban") {
@@ -396,13 +431,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 await interaction.guild.members.unban(user.id, reason);
                 interaction.reply({
                     content: `${user.username} tiltása feloldva. Indoklás: ${reason}`,
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             } catch (error) {
                 interaction.reply({
                     content:
                         "Hiba történt a felhasználó tiltásának feloldásakor.",
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             }
         } else if (commandName === "tempban") {
@@ -413,7 +448,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 return interaction.reply({
                     content:
                         'Hibás időtartam formátum! Használd a "XdYhZm" formátumot.',
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             }
 
@@ -421,7 +456,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 await interaction.guild.members.ban(user.id, { reason });
                 interaction.reply({
                     content: `${user.username} ki lett tiltva ${durationStr} időtartamra. Indoklás: ${reason}`,
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
 
                 setTimeout(async () => {
@@ -447,9 +482,39 @@ client.on(Events.InteractionCreate, async (interaction) => {
             } catch (error) {
                 interaction.reply({
                     content: "Hiba történt a felhasználó kitiltásakor.",
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             }
+        } else if (commandName === "delwarn") {
+            if (!hasPermissionAdmin) {
+                return interaction.reply({
+                    content: "Nincs jogosultságod a parancs használatához!",
+                    flags: 1 << 6,
+                });
+            }
+            
+            const target = options.getUser("user");
+            const index = options.getInteger("index");
+
+            const data = await Warn.findOne({
+                guildID: interaction.guild.id,
+                userID: target.id
+            });
+
+            if (!data || data.warnings.length < index || index <= 0) {
+                return interaction.reply({
+                    content: `❌ Nincs ilyen sorszámú figyelmeztetés.`,
+                    flags: 1 << 6
+                });
+            }
+
+            data.warnings.splice(index - 1, 1);
+            await data.save();
+
+            await interaction.reply({
+                content: `✅ A(z) #${index} figyelmeztetés törölve lett ${target.tag}-ról.`,
+                flags: 1 << 6
+            });
         }
     }
 
@@ -460,12 +525,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
         commandName === "mute" ||
         commandName === "unmute" ||
         commandName === "tempmute" ||
-        commandName === "warn"
+        commandName === "warn" ||
+        commandName === "getwarn"
     ) {
         if (!hasPermissionMA) {
             return interaction.reply({
                 content: "Nincs jogosultságod a parancs használatához!",
-                ephemeral: true,
+                flags: 1 << 6,
             });
         }
 
@@ -477,12 +543,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 await interaction.guild.members.kick(user.id, reason);
                 interaction.reply({
                     content: `${user.username} ki lett rúgva. Indoklás: ${reason}`,
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             } catch (error) {
                 interaction.reply({
                     content: "Hiba történt a felhasználó kirúgásakor.",
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             }
         } else if (commandName === "mute") {
@@ -491,12 +557,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 await member.roles.add(MUTE_ROLES);
                 interaction.reply({
                     content: `${user.username} néma lett. Indoklás: ${reason}`,
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             } catch (error) {
                 interaction.reply({
                     content: "Hiba történt a felhasználó némítása közben.",
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             }
         } else if (commandName === "unmute") {
@@ -505,13 +571,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 await member.roles.remove(MUTE_ROLES);
                 interaction.reply({
                     content: `${user.username} néma feloldva. Indoklás: ${reason}`,
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             } catch (error) {
                 interaction.reply({
                     content:
                         "Hiba történt a felhasználó némításának feloldásakor.",
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             }
         } else if (commandName === "tempmute") {
@@ -522,7 +588,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 return interaction.reply({
                     content:
                         'Hibás időtartam formátum! Használd a "XdYhZm" formátumot.',
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             }
 
@@ -531,7 +597,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 await member.roles.add(MUTE_ROLES);
                 interaction.reply({
                     content: `${user.username} néma lett ${durationStr} időtartamra. Indoklás: ${reason}`,
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
 
                 setTimeout(async () => {
@@ -549,14 +615,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
             } catch (error) {
                 interaction.reply({
                     content: "Hiba történt a felhasználó némítása közben.",
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             }
         } else if (commandName === "warn") {
             if (!hasPermissionMA) {
                 return interaction.reply({
                     content: "Nincs jogosultságod a parancs használatához!",
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             }
 
@@ -575,25 +641,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
             ) {
                 return await interaction.reply({
                     content: "Nincs jogod figyelmeztetni tagokat!",
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             }
 
             if (!user) {
                 return await interaction.reply({
                     content: "A megadott felhasználó nem található.",
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             }
 
             if (user.id === interaction.user.id) {
                 return await interaction.reply({
                     content: "Nem figyelmeztetheted saját magad!",
-                    ephemeral: true,
+                    flags: 1 << 6,
                 });
             }
 
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: 1 << 6 });
 
             try {
                 let warnings = await Warn.findOne({
@@ -658,12 +724,77 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 } catch {
                     // Privát üzenet nem ment – nem dobunk hibát
                 }
+
+                try {
+                    const modLogChannel = await interaction.guild.channels.fetch(MOD_CHANNEL_ID);
+
+                    const totalWarns = warnings.warnings.length;
+
+                    const modEmbed = new EmbedBuilder()
+                        .setTitle("📢 Új Figyelmeztetés")
+                        .addFields(
+                            { name: "Felhasználó", value: `<@${user.id}> (${user.tag})` },
+                            { name: "Figyelmeztetés #", value: `#${totalWarns}`, inline: true },
+                            { name: "Moderátor", value: `<@${interaction.user.id}>`, inline: true },
+                            { name: "Típus", value: action, inline: true },
+                            { name: "Időtartam", value: duration, inline: true },
+                            { name: "Üzenet", value: modMessage || "nincs" },
+                            { name: "Dátum", value: `<t:${Math.floor(Date.now() / 1000)}:F>` }
+                        )
+                        .setColor("Orange")
+                        .setTimestamp();
+
+                    const deleteButton = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`delwarn_${user.id}_${totalWarns - 1}`)
+                            .setLabel("🗑️ Törlés")
+                            .setStyle(ButtonStyle.Danger)
+                    );
+
+                    await modLogChannel.send({
+                        embeds: [modEmbed],
+                        components: [deleteButton]
+                    });
+                } catch (err) {
+                    console.error("Nem sikerült üzenetet küldeni a mod csatornára:", err);
+                }
+
             } catch (err) {
                 console.error("Hiba történt a figyelmeztetés során:", err);
                 await interaction.editReply({
                     content: "Hiba történt a figyelmeztetés során.",
                 });
             }
+        } else if (commandName === "getwarn") {
+            if (!hasPermissionMA) {
+                return interaction.reply({
+                    content: "Nincs jogosultságod a parancs használatához!",
+                    flags: 1 << 6,
+                });
+            }
+
+            const target = options.getUser("user");
+
+            const data = await Warn.findOne({
+                guildID: interaction.guild.id,
+                userID: target.id
+            });
+
+            if (!data || data.warnings.length === 0) {
+                return interaction.reply({
+                    content: `${target.tag} nem rendelkezik figyelmeztetésekkel.`,
+                    flags: 1 << 6
+                });
+            }
+
+            const list = data.warnings
+                .map((w, i) => `**#${i + 1}** - ${w.action} - <t:${Math.floor(new Date(w.date).getTime() / 1000)}:R>\n• Üzenet: ${w.modMessage || "nincs"}\n• Moderátor: <@${w.moderatorID}>`)
+                .join("\n\n");
+
+            await interaction.reply({
+                content: `📄 **${target.tag}** figyelmeztetései:\n\n${list}`,
+                flags: 1 << 6
+            });
         }
     }
 
@@ -671,7 +802,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const user = options.getUser("user") || interaction.user;
         interaction.reply({
             content: `Szia, ${user.username}!`,
-            ephemeral: true,
+            flags: 1 << 6,
         });
     } else if (commandName === "talk") {
         const message = options.getString("message");
@@ -681,11 +812,43 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
         interaction.reply({
             content: response.data.choices[0].message.content,
-            ephemeral: true,
+            flags: 1 << 6,
         });
     }
     if (interaction.commandName === "test") {
-        interaction.reply({ content: `Igen online vagyok`, ephemeral: true });
+        interaction.reply({ content: `Igen online vagyok`, flags: 1 << 6 });
+    }
+
+    if (interaction.isButton()) {
+        const [prefix, userId, warnIndex] = interaction.customId.split("_");
+
+        if (prefix !== "delwarn") return;
+
+        const data = await Warn.findOne({
+            guildID: interaction.guild.id,
+            userID: userId
+        });
+
+        if (!data || !data.warnings[warnIndex]) {
+            return interaction.reply({
+                content: "❌ A figyelmeztetés nem található vagy már törölve lett.",
+                ephemeral: true
+            });
+        }
+
+        data.warnings.splice(warnIndex, 1);
+        await data.save();
+
+        const embed = new EmbedBuilder()
+            .setTitle("🗑️ Figyelmeztetés törölve")
+            .setDescription(`A #${parseInt(warnIndex) + 1}. figyelmeztetés törölve lett.`)
+            .setColor("Red")
+            .setTimestamp();
+
+        await interaction.update({
+            embeds: [embed],
+            components: []
+        });
     }
 });
 

@@ -1,3 +1,4 @@
+// models/Warn.js
 const mongoose = require("mongoose");
 
 const warnSchema = new mongoose.Schema({
@@ -6,8 +7,10 @@ const warnSchema = new mongoose.Schema({
     warnings: [
         {
             moderatorID: String,
-            reason: String,
-            date: Date
+            action: String,
+            duration: String,
+            modMessage: String,
+            date: { type: Date, default: Date.now }
         }
     ]
 });
