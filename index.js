@@ -819,10 +819,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isButton()) {
-        const [prefix, userId, warnIndex] = interaction.customId.split("_");
+        const [prefix, userId, warnIndexRaw] = interaction.customId.split("_");
+        const warnIndex = Number(warnIndexRaw);
 
         if (prefix === "delwarn") {
-                // Jogosultság-ellenőrzés
+            // Jogosultság-ellenőrzés
             const member = interaction.member;
             const hasPermissionAdmin = member.roles.cache.some((role) =>
                 ALLOWED_ROLES_ADM.includes(role.id)
@@ -842,7 +843,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 userID: userId
             });
 
-            if (!data || !data.warnings[warnIndex]) {
+            // Ellenőrizd, hogy a warnIndex szám és létezik-e ilyen figyelmeztetés
+            if (
+                !data ||
+                isNaN(warnIndex) ||
+                warnIndex < 0 ||
+                warnIndex >= data.warnings.length
+            ) {
                 return interaction.reply({
                     content: "❌ A figyelmeztetés nem található vagy már törölve lett.",
                     ephemeral: true
@@ -854,7 +861,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
             const embed = new EmbedBuilder()
                 .setTitle("🗑️ Figyelmeztetés törölve")
-                .setDescription(`A #${parseInt(warnIndex) + 1}. figyelmeztetés törölve lett.`)
+                .setDescription(`A #${warnIndex + 1}. figyelmeztetés törölve lett.`)
                 .setColor("Red")
                 .setTimestamp();
 
