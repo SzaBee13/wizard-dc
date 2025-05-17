@@ -821,33 +821,48 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton()) {
         const [prefix, userId, warnIndex] = interaction.customId.split("_");
 
-        if (prefix !== "delwarn") return;
+        if (prefix === "delwarn") {
+                // Jogosultság-ellenőrzés
+            const member = interaction.member;
+            const hasPermissionAdmin = member.roles.cache.some((role) =>
+                ALLOWED_ROLES_ADM.includes(role.id)
+            );
+            const hasPermissionMA = member.roles.cache.some((role) =>
+                ALLOWED_ROLES_MA.includes(role.id)
+            );
+            if (!hasPermissionAdmin && !hasPermissionMA) {
+                return interaction.reply({
+                    content: "Nincs jogosultságod a figyelmeztetés törléséhez.",
+                    ephemeral: true
+                });
+            }
 
-        const data = await Warn.findOne({
-            guildID: interaction.guild.id,
-            userID: userId
-        });
+            const data = await Warn.findOne({
+                guildID: interaction.guild.id,
+                userID: userId
+            });
 
-        if (!data || !data.warnings[warnIndex]) {
-            return interaction.reply({
-                content: "❌ A figyelmeztetés nem található vagy már törölve lett.",
-                ephemeral: true
+            if (!data || !data.warnings[warnIndex]) {
+                return interaction.reply({
+                    content: "❌ A figyelmeztetés nem található vagy már törölve lett.",
+                    ephemeral: true
+                });
+            }
+
+            data.warnings.splice(warnIndex, 1);
+            await data.save();
+
+            const embed = new EmbedBuilder()
+                .setTitle("🗑️ Figyelmeztetés törölve")
+                .setDescription(`A #${parseInt(warnIndex) + 1}. figyelmeztetés törölve lett.`)
+                .setColor("Red")
+                .setTimestamp();
+
+            await interaction.update({
+                embeds: [embed],
+                components: []
             });
         }
-
-        data.warnings.splice(warnIndex, 1);
-        await data.save();
-
-        const embed = new EmbedBuilder()
-            .setTitle("🗑️ Figyelmeztetés törölve")
-            .setDescription(`A #${parseInt(warnIndex) + 1}. figyelmeztetés törölve lett.`)
-            .setColor("Red")
-            .setTimestamp();
-
-        await interaction.update({
-            embeds: [embed],
-            components: []
-        });
     }
 });
 
