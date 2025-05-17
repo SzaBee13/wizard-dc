@@ -13,17 +13,16 @@ const {
     enableValidators,
     ActionRowBuilder,
     ButtonBuilder,
-    ButtonStyle
+    ButtonStyle,
+    EmbedBuilder,
 } = require("discord.js");
 const { token, clientId, guildId } = require("./config.json");
 const Warn = require("./models/Warn.js");
 const mongoose = require("mongoose");
 
-mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-}).then(() => console.log("✅ Railway MongoDB connexion successful"))
-  .catch((err) => console.error("❌ MongoDB error:", err));
+mongoose.connect(process.env.MONGO_URI, {})
+    .then(() => console.log("✅ Railway MongoDB connection successful"))
+    .catch((err) => console.error("❌ MongoDB error:", err));
 
 
 const client = new Client({
