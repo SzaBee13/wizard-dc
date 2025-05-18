@@ -22,7 +22,7 @@ const mongoose = require("mongoose");
 const token = process.env.TOKEN;
 
 mongoose.connect(process.env.MONGO_URI, {})
-    .then(() => console.log("✅ Railway MongoDB connection successful"))
+    .then(() => console.log("✅ Local MongoDB connection successful"))
     .catch((err) => console.error("❌ MongoDB error:", err));
 
 
