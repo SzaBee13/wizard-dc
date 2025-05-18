@@ -16,9 +16,10 @@ const {
     ButtonStyle,
     EmbedBuilder,
 } = require("discord.js");
-const { token, clientId, guildId } = require("./config.json");
+const {clientId, guildId } = require("./config.json");
 const Warn = require("./models/Warn.js");
 const mongoose = require("mongoose");
+const token = process.env.TOKEN;
 
 mongoose.connect(process.env.MONGO_URI, {})
     .then(() => console.log("✅ Railway MongoDB connection successful"))
