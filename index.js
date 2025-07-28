@@ -311,7 +311,7 @@ client.once(Events.ClientReady, (c) => {
                     .setRequired(true)
             ),
     ].map((command) => command.toJSON());
-    client.application.commands.set(commands, guildId);
+    client.application.commands.set(commands);
 
     commandsP = commands;
 });
