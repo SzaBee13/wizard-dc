@@ -2,7 +2,7 @@
 
 Copyright (c) 2025 SzaBee13 (https://github.com/SzaBee13)
 
-Permission is hereby granted, free of charge, to any user who is a member of the official [Your Server Name] Discord server ("the Server"), to use, modify, and run this software ("Wizard-DC Bot") **only** within the Server environment.
+Permission is hereby granted, free of charge, to any user who is a member of the official [Wizard Guru / SzaBee13](https://discord.gg/num6hCEhxr) Discord server ("the Server"), to use, modify, and run this software ("Wizard-DC Bot") **only** within the Server environment.
 
 You may NOT:
 - Redistribute, resell, or deploy this bot on any Discord server or platform outside the Server without explicit written permission from the author.
